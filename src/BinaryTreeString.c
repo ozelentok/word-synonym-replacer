@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 #include "BinaryTreeString.h"
 /*
  * @Parm tree - Tree to add new node to
@@ -37,4 +37,18 @@ int addToBinaryTreeStr(BinaryTreeStr* tree, char* word, char* synonyms[], int nu
 		return addToBinaryTreeStr(tree->right, word, synonyms, numberOfSynonyms);
 	}
 	return 0;
+}
+BinaryTreeStr* searchInBinaryTreeStr(BinaryTreeStr* tree, const char* word) {
+	int cmpResult;
+	if(tree == NULL) {
+		return NULL;
+	}
+	cmpResult = strcmp(word, tree->word);
+	if (cmpResult < 0) {
+		return searchInBinaryTreeStr(tree->left, word);
+	}
+	if(cmpResult > 0) {
+		return searchInBinaryTreeStr(tree->right, word);
+	}
+	return tree;
 }
