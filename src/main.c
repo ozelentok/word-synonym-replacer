@@ -5,7 +5,7 @@
 #include "BinaryTreeString.h"
 #define N (100)
 int countCharsInString(char* str, char ch);
-void parseSynonymsFile(FILE* file, BinaryTreeStr* root);
+int parseSynonymsFile(FILE* file, BinaryTreeStr* root);
 int readLine(char* buffer, int bufferSize, FILE* file);
 int readWord(char* buffer, int bufferSize, FILE* file);
 int findKeyAndCopy(char* mainBuffer, int pos, char** wordPtr);
@@ -21,38 +21,46 @@ int main(int argc, char **argv) {
 	FILE* textOutput;
 	char *inputFilename;
 	char* outputFilename;
-	/*
 	if (!validateArguments(argc, argv)) {
-		return 1;
+		return EXIT_FAILURE;
 	}
 	inputFilename = argv[2];
-	*/
-	inputFilename = "textfile.txt";
 	outputFilename = createNewFilename(inputFilename);
-	synonymDatabase = fopen("database.txt", "r");
+	if (outputFilename == NULL) {
+		printf("Memory Allocation failed, Aborting\n");
+		return EXIT_FAILURE;
+	}
+	synonymDatabase = fopen(argv[1], "r");
 	textInput = fopen(inputFilename, "r");
 	textOutput = fopen(outputFilename, "w");
-	parseSynonymsFile(synonymDatabase, &btRoot);
+	if(parseSynonymsFile(synonymDatabase, &btRoot) == -1) {
+		printf("Memory Allocation failed, Aborting\n");
+		return EXIT_FAILURE;
+	}
 	replaceWordsInFile(textInput, textOutput, &btRoot);
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 /*
  * check that 2 arguments exist
  * Database filepath and Text filepath
+ * @Param argc - Argument count
+ * @Param argv - Argument strings
+ * @Returns 1 if arguments are ok, 0 else
  */
 int validateArguments(int argc, char** argv) {
 	if(argc < 2) {
-		printf("Not enough arguments");
-		return 1;
+		printf("Not enough arguments\n");
+		return 0;
 	}
-	return 0;
+	return 1;
 }
 
 /*
  * Creates a string from filename, adding a letter to the start
  * @Param filename - string of filename
  * @Returns new string with modified filename
+ * if memory allocation failed, NULL is returned
  */
 char* createNewFilename(char* filename) {
 	char* fileExtesion = ".mod";
@@ -97,26 +105,42 @@ void replaceWordsInFile(FILE* input, FILE* output, BinaryTreeStr* synonymBankTre
 /*
  * Pares a the file and places the words and
  * its synonyms inside a Binary tree
+ * the format is:
+ * <word>:<synonym>;<synonym>;<synonym>;
+ * for example
+ * hello:hi;howdy;greetings;what's up;
  * @Param file - file to parse from
  * @Param root - binary tree to put data into
+ * @Returns 1 if successful
+ * -1 if memory allocation failed
  */
-void parseSynonymsFile(FILE* file, BinaryTreeStr* root) {
+int parseSynonymsFile(FILE* file, BinaryTreeStr* root) {
 	char buffer[N];
-	int bufferPos;
-	char* currentWord;
-	char** currentSynonyms;
-	int synonymsCount;
+	int bufferPos = 0;
+	char* currentWord = NULL;
+	char** currentSynonyms = NULL;
+	int synonymsCount = 0;
 	int i;
 	while(readLine(buffer, N, file) != 0) {
 		bufferPos = 0;
 		bufferPos = findKeyAndCopy(buffer, bufferPos, &currentWord);
+		if(bufferPos == -1) {
+			return -1;
+		}
 		synonymsCount = countCharsInString(buffer, ';');
 		currentSynonyms = (char** ) malloc(sizeof(char*) * synonymsCount);
 		for(i = 0; i < synonymsCount; i++) {
 			bufferPos = copySynonym(buffer, bufferPos, currentSynonyms, i);
+			if(bufferPos == -1) {
+				return -1;
+			}
 		}
-		addToBinaryTreeStr(root, currentWord, currentSynonyms, synonymsCount);
+		i = addToBinaryTreeStr(root, currentWord, currentSynonyms, synonymsCount);
+		if(i == -1) {
+			return -1;
+		}
 	}
+	return 1;
 }
 
 /* Copies for a synonym and places it in synonyms
@@ -127,6 +151,7 @@ void parseSynonymsFile(FILE* file, BinaryTreeStr* root) {
  * @Param synonyms - Synonym array(must be allocated before call)
  * @Param synonymIndex - Index in synonyms array to place the string
  * @Returns - returns index after ';' (next synonym)
+ * -1 if if memory allocation failed
  */
 int copySynonym(char* mainBuffer, int pos, char** synonyms,int synonymIndex) {
 	int startIndex = pos;
@@ -136,6 +161,9 @@ int copySynonym(char* mainBuffer, int pos, char** synonyms,int synonymIndex) {
 		strLen++; pos++;
 	}
 	synonyms[synonymIndex] = (char *) malloc(sizeof(char) * strLen);
+	if (synonyms[synonymIndex] == NULL) {
+		return -1;
+	}
 	for(i = 0; startIndex < pos; startIndex++, i++) {
 		synonyms[synonymIndex][i] = mainBuffer[startIndex];
 	}
@@ -151,6 +179,7 @@ int copySynonym(char* mainBuffer, int pos, char** synonyms,int synonymIndex) {
  * @Param pos - Stating index to search from
  * @Param wordPtr - pointer to pointer of the key
  * @Returns - returns index after ':' (first synonym)
+ * -1 if if memory allocation failed
  */
 int findKeyAndCopy(char* mainBuffer, int pos, char** wordPtr) {
 	char ch;
@@ -159,6 +188,9 @@ int findKeyAndCopy(char* mainBuffer, int pos, char** wordPtr) {
 		ch = mainBuffer[pos];
 		if (ch == ':') {
 			*wordPtr = (char *) malloc(sizeof(char) * pos + 1);
+			if (*wordPtr == NULL) {
+				return -1;
+			}
 			for(i = 0; i < pos; i++) {
 				(*wordPtr)[i] = mainBuffer[i];
 			}
